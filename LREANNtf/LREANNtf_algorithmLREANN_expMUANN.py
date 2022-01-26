@@ -1,4 +1,4 @@
-"""ANNtf2_algorithmLREANN_expMUANN.py
+"""LREANNtf_algorithmLREANN_expMUANN.py
 
 # Author:
 Richard Bruce Baxter - Copyright (c) 2020-2022 Baxter AI (baxterai.com)
@@ -7,13 +7,13 @@ Richard Bruce Baxter - Copyright (c) 2020-2022 Baxter AI (baxterai.com)
 MIT License
 
 # Installation:
-see ANNtf2.py
+see LREANNtf_main.py
 
 # Usage:
-see ANNtf2.py
+see LREANNtf_main.py
 
 # Description:
-ANNtf algorithm LREANN expMUANN - define learning rule experiment artificial neural network with multi propagation (per layer; with synaptic delta calculation) update
+LREANNtf algorithm LREANN expMUANN - define learning rule experiment artificial neural network with multi propagation (per layer; with synaptic delta calculation) update
 
 """
 

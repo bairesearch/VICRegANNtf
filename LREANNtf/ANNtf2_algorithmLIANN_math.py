@@ -147,6 +147,7 @@ def neuronActivationCorrelationMinimisation(networkIndex, n_h, l1, A, randomNorm
 
 	resetNeuronIfSameValueAcrossBatch = False #reset neuron if all values of a neuron k being the same value across the batch
 	randomlySelectCorrelatedNeuronToReset = False	#randomly select one of each correlated neuron to reset
+	
 	useCorrelationMatrix = True	#only implementation currently available
 	
 	Atransposed = tf.transpose(A)

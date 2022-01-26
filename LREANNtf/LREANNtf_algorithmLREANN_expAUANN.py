@@ -1,4 +1,4 @@
-"""ANNtf2_algorithmLREANN_expAUANN.py
+"""LREANNtf_algorithmLREANN_expAUANN.py
 
 # Author:
 Richard Bruce Baxter - Copyright (c) 2020-2022 Baxter AI (baxterai.com)
@@ -7,13 +7,13 @@ Richard Bruce Baxter - Copyright (c) 2020-2022 Baxter AI (baxterai.com)
 MIT License
 
 # Installation:
-see ANNtf2.py
+see LREANNtf_main.py
 
 # Usage:
-see ANNtf2.py
+see LREANNtf_main.py
 
 # Description:
-ANNtf algorithm LREANN expAUANN - define learning rule experiment artificial neural network with associative (wrt exemplar) update
+LREANNtf algorithm LREANN expAUANN - define learning rule experiment artificial neural network with associative (wrt exemplar) update
 
 """
 
@@ -32,6 +32,9 @@ classTargetExemplarsYList = []
 #OLD tf	classTargetExemplarsLists code:
 #classTargetExemplarsXList = None
 #classTargetExemplarsYList = None
+
+generateLargeNetwork = True	#required for LREANNtf_algorithmLREANN_expAUANN (see dynamicFinalLayerClassTargetAssignment: exemplar creation currently requires for each data class, at least one successful propagation to output layer in randomly initiated network)
+	#consider also setting numberOfLayers=3 (as per original spec)
 
 #exemplarSelectionRequiresCorrectFirstPropagation = True	#default: True (False is not yet implementated, would require algorithm upgrade to determine how to tweak higher levels towards correct target during exemplar selection process)
 supportMultipleExemplarsPerClass = True	#default: False #train multiple exemplars oer class
@@ -134,7 +137,7 @@ def defineNetworkParameters(num_input_neurons, num_output_neurons, datasetNumFea
 	global datasetNumClasses
 	global classTargetExemplarsDynamicOutputNeuronIndexList
 	
-	n_h, numberOfLayers, numberOfNetworks, datasetNumClasses = ANNtf2_operations.defineNetworkParameters(num_input_neurons, num_output_neurons, datasetNumFeatures, dataset, numberOfNetworksSet)
+	n_h, numberOfLayers, numberOfNetworks, datasetNumClasses = ANNtf2_operations.defineNetworkParameters(num_input_neurons, num_output_neurons, datasetNumFeatures, dataset, numberOfNetworksSet, generateLargeNetwork=generateLargeNetwork)
 	
 	#classTargetExemplarsDynamicOutputNeuronIndexList = [-1] * num_output_neurons
 
@@ -420,11 +423,18 @@ def generateTFexemplarDataFromNParraysLREANN_expAUANN(train_x, train_y, networkI
 	if(dynamicFinalLayerClassTargetAssignment):
 		global classTargetExemplarsDynamicOutputNeuronIndexList
 
+	#print("train_x = ", train_x)
+	#print("train_y = ", train_y)
+	#print("networkIndex = ", networkIndex)
+	#print("shuffleSize = ", shuffleSize)
+	#print("batchSize = ", batchSize)
+	#print("datasetNumClasses = ", datasetNumClasses)
 	#print("generateClassTargetExemplars = ", generateClassTargetExemplars)
-
+	
 	exemplarDataList = []
 	
 	if(generateClassTargetExemplars):
+		#print("generateClassTargetExemplars")
 		classTargetExemplarsDynamicOutputNeuronIndexList = [-1] * datasetNumClasses
 
 		#classTargetExemplarsList global lists are currently required such that generateTFtrainDataFromNParraysLREANN_expAUANN can be executed for multiple epochs (w/wo generateClassTargetExemplars)
@@ -432,13 +442,13 @@ def generateTFexemplarDataFromNParraysLREANN_expAUANN(train_x, train_y, networkI
 		classTargetExemplarsYList = [None] * datasetNumClasses
 					
 	for classTarget in range(datasetNumClasses):
-			
+					
 		train_xClassFiltered, train_yClassFiltered = filterNParraysByClassTarget(train_x, train_y, classTargetFilterIndex=classTarget)
 		trainDataUnbatched = generateTFtrainDataUnbatchedFromNParrays(train_xClassFiltered, train_yClassFiltered)
 		
 		if(generateClassTargetExemplars):
 		
-			#print("\ngenerateClassTargetLists: classTarget = ", classTarget)
+			#print("\n\tgenerateClassTargetLists: classTarget = ", classTarget)
 
 			train_xLength = train_x.shape[0]
 			trainDataAll = trainDataUnbatched.batch(train_xLength)	#train_xLength + 1
@@ -448,13 +458,15 @@ def generateTFexemplarDataFromNParraysLREANN_expAUANN(train_x, train_y, networkI
 			
 			if(dynamicFinalLayerClassTargetAssignment):
 				predMaxOutputIndex = tf.argmax(pred, 1).numpy()
-				#print("predMaxOutputIndex = ", predMaxOutputIndex)
+				#print("\t\tpredMaxOutputIndex = ", predMaxOutputIndex)
 				
 				numInitialPredictionsCorrect = 0
 				numInitialPredictionsFail = 0
 				for experienceIndex in range(batchSize):
+					#print("\t\t\texperienceIndex = ", experienceIndex)				
 					experiencePredMaxOutput = predMaxOutputIndex[experienceIndex]
 					if experiencePredMaxOutput in classTargetExemplarsDynamicOutputNeuronIndexList:
+						#print("\t\t\t\texperiencePredMaxOutput = ", experiencePredMaxOutput)				
 						if(experiencePredMaxOutput == classTargetExemplarsDynamicOutputNeuronIndexList[classTarget]):
 							if(supportMultipleExemplarsPerClass):
 								appendToClassTargetExemplarsList(classTargetExemplarsXList, classTargetExemplarsYList, classTarget, train_x[experienceIndex], experiencePredMaxOutput)
@@ -463,6 +475,7 @@ def generateTFexemplarDataFromNParraysLREANN_expAUANN(train_x, train_y, networkI
 							numInitialPredictionsFail = numInitialPredictionsFail + 1
 					else:
 						#create new exemplar
+						#print("\t\t\t\tcreate new exemplar")
 						if(classTargetExemplarsDynamicOutputNeuronIndexList[classTarget] == -1):	#verify that all exemplars of classX have same outputIndex
 							appendToClassTargetExemplarsList(classTargetExemplarsXList, classTargetExemplarsYList, classTarget, train_x[experienceIndex], experiencePredMaxOutput)
 							classTargetExemplarsDynamicOutputNeuronIndexList[classTarget] = experiencePredMaxOutput
@@ -484,7 +497,10 @@ def generateTFexemplarDataFromNParraysLREANN_expAUANN(train_x, train_y, networkI
 						xFilteredExemplar = xFiltered[0]
 						yFilteredExemplar = yFiltered[0]
 						appendToClassTargetExemplarsList(classTargetExemplarsXList, classTargetExemplarsYList, classTarget, xFilteredExemplar, yFilteredExemplar)
-			
+		
+		#print("classTargetExemplarsXList = ", classTargetExemplarsXList)
+		#print("classTarget = ", classTarget)
+		
 		if(classTargetExemplarsXList[classTarget].size == 0):
 			if(dynamicFinalLayerClassTargetAssignment):
 				print("generateTFtrainDataFromNParraysLREANN_expAUANN error: dynamicFinalLayerClassTargetAssignment: exemplar creation currently requires for each data class, at least one successful propagation to output layer in randomly initiated network")
