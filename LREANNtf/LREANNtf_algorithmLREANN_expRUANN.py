@@ -668,7 +668,7 @@ def setAerrorBackpropFullNetworkCalculation(A, k, l, y, networkIndex):
 	AtrialKdelta = calculateDeltaTF(AtrialK, trialAmodValue, useMultiplicationRatherThanAdditionOfDeltaValuesAideal)	#this integrates the fact in backpropagation Aerror should be linearly dependent on A  #* A_l	#multiply by the strength of the current layer signal
 	AtrialK = tf.add(AtrialK, AtrialKdelta)
 	Atrial = A
-	Atrial = modifyTensorRowColumn(Atrial, False, k, AtrialK, isVector=True)	#Atrial[:,k] = (trialAmodValue)
+	Atrial = ANNtf2_operations.modifyTensorRowColumn(Atrial, False, k, AtrialK, isVector=True)	#Atrial[:,k] = (trialAmodValue)
 
 	pred, Afinal, Zfinal = neuralNetworkPropagationLREANNlayer(Atrial, numberOfLayers, l, networkIndex, recordAtrace=(not recalculateAtraceUnoptimisedBio))
 	AerrorLayerFinalMod, y_pred = calculateAerrorTopLayerWrapper(Afinal, pred, y_true, networkIndex)	
@@ -726,7 +726,7 @@ def trialAidealMod(direction, A, k, l, networkIndex):
 	AtrialK = tf.add(AtrialK, AtrialKdelta)
 	
 	Atrial = A
-	Atrial = modifyTensorRowColumn(Atrial, False, k, AtrialK, isVector=True)	#Atrial[:,k] = (trialAmodValue)
+	Atrial = ANNtf2_operations.modifyTensorRowColumn(Atrial, False, k, AtrialK, isVector=True)	#Atrial[:,k] = (trialAmodValue)
 
 	AtrialAbove, ZtrialAbove = neuralNetworkPropagationLREANNlayerL(Atrial, l+1, networkIndex)
 	
@@ -780,7 +780,7 @@ def trialAidealMod(direction, A, k, l, networkIndex):
 	if(debugVerboseOutputTrain):
 		print("AtrialKSuccessful", AtrialKSuccessful)
 		
-	AidealLayerNew = modifyTensorRowColumn(Aideal[generateParameterNameNetwork(networkIndex, l, "Aideal")], False, k, AtrialKSuccessful, isVector=True)
+	AidealLayerNew = ANNtf2_operations.modifyTensorRowColumn(Aideal[generateParameterNameNetwork(networkIndex, l, "Aideal")], False, k, AtrialKSuccessful, isVector=True)
 	
 	setAerrorGivenAideal(AidealLayerNew, None, l, networkIndex)
 	
@@ -1091,41 +1091,6 @@ def calculateErrorAtrial(Atrial, AidealLayer, networkIndex, averageType="all"):
 	return error	
 				
 
-#note if updated_value isVector, updated_value should be provided in 2D format
-def modifyTensorRowColumn(a, isRow, index, updated_value, isVector):
-	
-	if(not isRow):
-		a = tf.transpose(a)
-		if(isVector):
-			updated_value = tf.transpose(updated_value)
-	
-	if(index == 0):
-		if(isVector):
-			values = [updated_value, a[index+1:]]
-		else:
-			values = [[updated_value], a[index+1:]]
-	elif(index == a.shape[0]-1):
-		if(isVector):
-			values = [a[:index], updated_value]
-		else:
-			values = [a[:index], [updated_value]]
-	else:
-		if(isVector):
-			values = [a[:index], updated_value, a[index+1:]]
-		else:
-			values = [a[:index], [updated_value], a[index+1:]]
-	
-	#print("index = ", index)
-	#print("values = ", values)
-	#print("updated_value = ", updated_value)
-			
-	a = tf.concat(axis=0, values=values)
-			
-	if(not isRow):
-		a = tf.transpose(a)
-		
-	return a
-
 def calculateAidealDelta(A, l, networkIndex):
 	AidealDelta = calculateADelta(Aideal[generateParameterNameNetwork(networkIndex, l, "Aideal")], A)
 	return AidealDelta
@@ -1148,7 +1113,7 @@ def setAerrorK(AerrorK, k, l, networkIndex=1):
 		#print("AerrorLayer.shape = ", AerrorLayer.shape)
 		#print("AerrorK.shape = ", AerrorK.shape)
 		#print("AerrorK = ", AerrorK)
-		AerrorLayer = modifyTensorRowColumn(AerrorLayer, isRow, k, AerrorK, isVector)
+		AerrorLayer = ANNtf2_operations.modifyTensorRowColumn(AerrorLayer, isRow, k, AerrorK, isVector)
 		Aerror[generateParameterNameNetwork(networkIndex, l, "Aerror")] = AerrorLayer
 		#print("AerrorLayer.shape = ", AerrorLayer.shape)
 			
