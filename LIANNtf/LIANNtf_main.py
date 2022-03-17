@@ -270,20 +270,16 @@ def executeOptimisation(x, y, datasetNumClasses, numberOfLayers, optimizer, netw
 		
 
 def calculatePropagationLoss(x, y, datasetNumClasses, numberOfLayers, costCrossEntropyWithLogits, networkIndex=1, l=None):
-	
-	trainFinalLayer = False
 	if(algorithm == "VICRegANN"):
 		if(l==numberOfLayers):
-			trainFinalLayer = True
-			y = y[:, 0]	#only optimise final layer weights for first experience in matched class pair
+			pred = LIANNtf_algorithm.neuralNetworkPropagationVICRegANNtrainFinalLayer(x, l, networkIndex)
+			target = y[:, 0]	#only optimise final layer weights for first experience in matched class pair
+			loss = ANNtf2_operations.calculateLossCrossEntropy(pred, target, datasetNumClasses, costCrossEntropyWithLogits)	
+			acc = ANNtf2_operations.calculateAccuracy(pred, target)	#only valid for softmax class targets 			
 		else:
 			loss = LIANNtf_algorithm.neuralNetworkPropagationVICRegANNtrain(x, l, networkIndex)
 			acc = None	#not used when optimising hidden layer weights
 	else:
-		trainFinalLayer = True
-		
-	if(trainFinalLayer):
-		acc = 0	#only valid for softmax class targets 
 		pred = neuralNetworkPropagation(x, networkIndex)
 		target = y
 		loss = ANNtf2_operations.calculateLossCrossEntropy(pred, target, datasetNumClasses, costCrossEntropyWithLogits)	
@@ -451,7 +447,7 @@ def trainMinimal():
 			trainBatch(e, batchIndex, batchX, batchY, datasetNumClasses, numberOfLayers, optimizer, networkIndex, costCrossEntropyWithLogits, display)
 
 		pred = neuralNetworkPropagationTest(testBatchX, networkIndex)
-		print("Test Accuracy: %f" % (calculateAccuracy(pred, testBatchY)))
+		print("Test Accuracy: %f" % (ANNtf2_operations.calculateAccuracy(pred, testBatchY)))
 
 			
 #this function can be used to extract a minimal template;
@@ -523,7 +519,7 @@ def train(trainMultipleNetworks=False, trainMultipleFiles=False, greedy=False):
 				#testBatchX, testBatchY = (test_x, test_y)
 
 				for batchIndex in range(int(trainingSteps)):
-					print("batchIndex = ", batchIndex)
+					#print("batchIndex = ", batchIndex)
 					
 					(batchX, batchY) = trainDataListIterators[trainDataIndex].get_next()	#next(trainDataListIterators[trainDataIndex])
 					batchYactual = batchY
@@ -546,9 +542,9 @@ def train(trainMultipleNetworks=False, trainMultipleFiles=False, greedy=False):
 				else:
 					pred = neuralNetworkPropagationTest(testBatchX, networkIndex)
 					if(greedy):
-						print("Test Accuracy: l: %i, %f" % (l, calculateAccuracy(pred, testBatchY)))
+						print("Test Accuracy: l: %i, %f" % (l, ANNtf2_operations.calculateAccuracy(pred, testBatchY)))
 					else:
-						print("Test Accuracy: %f" % (calculateAccuracy(pred, testBatchY)))
+						print("Test Accuracy: %f" % (ANNtf2_operations.calculateAccuracy(pred, testBatchY)))
 
 
 def generateRandomisedIndexArray(indexFirst, indexLast, arraySize=None):

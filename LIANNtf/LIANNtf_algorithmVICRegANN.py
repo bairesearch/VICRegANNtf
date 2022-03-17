@@ -31,18 +31,23 @@ import copy
 
 trainGreedy = True	#greedy incremental layer training - else backprop through all layers
 
+#hyperparameters
+lambdaHyperparameter = 1.0 #invariance coefficient	#base condition > 1
+muHyperparameter = 1.0	#invariance coefficient	#base condition > 1
+nuHyperparameter = 1.0 #covariance loss coefficient	#set to 1
+
+#intialise network properties (configurable);
+#supportSkipLayers = False #fully connected skip layer network	#TODO: add support for skip layers	#see ANNtf2_algorithmFBANN for template
+generateDeepNetwork = True
+
+generateNetworkStatic = False
+generateLargeNetwork = False
+largeBatchSize = False
+
 #debug parameters;
 debugFastTrain = False
 debugSmallBatchSize = False	#small batch size for debugging matrix output
-
-#intialise network properties (configurable);
-supportSkipLayers = False #fully connected skip layer network	#TODO: add support for skip layers	#see ANNtf2_algorithmFBANN for template
-
-#intialise network properties;
-largeBatchSize = False
-generateLargeNetwork = False	#large number of layer neurons is required for learningAlgorithmHebbian:useZAcoincidenceMatrix
-generateNetworkStatic = False
-
+generateVeryLargeNetwork = False
 
 #network/activation parameters;
 #forward excitatory connections;
@@ -51,8 +56,7 @@ B = {}
 
 learningRate = 0.0	#defined by defineTrainingParametersVICRegANN
 
-generateDeepNetwork = False
-generateVeryLargeNetwork = False
+
 
 if(generateVeryLargeNetwork):
 	generateLargeNetworkRatio = 100	#100	#default: 10
@@ -147,8 +151,6 @@ def neuralNetworkPropagationVICRegANNtest(x, networkIndex=1, l=None):
 	
 def neuralNetworkPropagationVICRegANNminimal(x, networkIndex=1, l=None):
 
-	x = x[:, 0]	#only optimise final layer weights for first experience in matched class pair
-	
 	if(l == None):
 		maxLayer = numberOfLayers
 	elif(l == numberOfLayers):
@@ -169,7 +171,11 @@ def neuralNetworkPropagationVICRegANNminimal(x, networkIndex=1, l=None):
 		ZprevLayer = Z
 
 	return tf.nn.softmax(Z)
-	
+
+def neuralNetworkPropagationVICRegANNtrainFinalLayer(x, layerToTrain, networkIndex=1):
+	x = x[:, 0]	#only optimise final layer weights for first experience in matched class pair
+	return neuralNetworkPropagationVICRegANNminimal(x, networkIndex, layerToTrain)
+
 def neuralNetworkPropagationVICRegANNtrain(x, layerToTrain, networkIndex=1):
 
 	x1 = x[:, 0]
@@ -219,7 +225,7 @@ def neuralNetworkPropagationVICRegANNlearningAlgorithm(networkIndex, AprevLayer,
 def forwardIteration(networkIndex, AprevLayer, ZprevLayer, l, enableInhibition=False, randomlyActivateWeights=False):
 	#forward excitatory connections;
 	EW = W[generateParameterNameNetwork(networkIndex, l, "W")]
-	print("forwardIteration: EW = ", EW)
+	#print("forwardIteration: EW = ", EW)
 	Z = tf.add(tf.matmul(AprevLayer, EW), B[generateParameterNameNetwork(networkIndex, l, "B")])
 	A = activationFunction(Z)
 	return A, Z
@@ -264,7 +270,7 @@ def generateTFtrainDataFromNParraysVICRegANN(train_x, train_y, shuffleSize, batc
 	shuffleSizeNew = train_xPairsNP.shape[0]	#shuffle_buffer_size: For perfect shuffling, a buffer size greater than or equal to the full size of the dataset is required - https://www.tensorflow.org/api_docs/python/tf/data/Dataset
 	print("train_xPairsNP.shape = ", train_xPairsNP.shape)
 	print("train_yPairsNP.shape = ", train_yPairsNP.shape)
-	print("shuffleSizeNew = ", shuffleSizeNew)
+	#print("shuffleSizeNew = ", shuffleSizeNew)
 
 	trainDataUnbatched = generateTFtrainDataUnbatchedFromNParrays(train_xPairsNP, train_yPairsNP)
 	trainData = generateTFtrainDataFromTrainDataUnbatched(trainDataUnbatched, shuffleSizeNew, batchSize)
@@ -273,41 +279,46 @@ def generateTFtrainDataFromNParraysVICRegANN(train_x, train_y, shuffleSize, batc
 
 
 def calculatePropagationLossVICRegANN(A1, A2):
+
+	#variance loss
 	batchVariance1 = calculateVarianceBatch(A1)
 	batchVariance2 = calculateVarianceBatch(A2)
-	batchVariance = (batchVariance1+batchVariance2)/2.0
-	matchedClassPairSimilarity = calculateSimilarityPair(A1, A2)
-	covariance1 = calculateCovariance(A1)
-	covariance2 = calculateCovariance(A2)
-	covariance = (covariance1+covariance2)/2.0
-	loss = (covariance)/(batchVariance * matchedClassPairSimilarity)
-		#loss = (matchedClassPairVariance * covariance)/batchVariance
-		#1.0/(batchVariance * (1.0/matchedClassPairVariance) * (1.0/covariance))
-	print("loss = ", loss)
+	varianceLoss = tf.reduce_mean(tf.nn.relu(1.0 - batchVariance1)) + tf.reduce_mean(tf.nn.relu(1.0 - batchVariance2))
+	
+	#invariance loss
+	matchedClassPairSimilarityLoss = calculateSimilarityLoss(A1, A2)
+	
+	#covariance loss
+	covariance1matrix = calculateCovarianceMatrix(A1)
+	covariance2matrix = calculateCovarianceMatrix(A2)
+	covarianceLoss = calculateCovarianceLoss(covariance1matrix) + calculateCovarianceLoss(covariance2matrix)
+	
+	#loss
+	loss = lambdaHyperparameter*matchedClassPairSimilarityLoss + muHyperparameter*varianceLoss + nuHyperparameter*covarianceLoss
+	#print("loss = ", loss)
+	
 	return loss
 	
 def calculateVarianceBatch(A):
-	#batchVariance = tf.math.reduce_variance(A, axis=0)
-	print("A = ", A)
-	batchVariance = tf.math.reduce_std(A, axis=0)	#VICReg implementation uses stddev not variance
-	batchVariance = tf.math.reduce_mean(batchVariance)
-	print("batchVariance = ", batchVariance)
+	#batchVariance = tf.math.reduce_std(A, axis=0)
+	batchVariance = tf.sqrt(tf.math.reduce_variance(A, axis=0) + 1e-04)
 	return batchVariance
 	
-def calculateSimilarityPair(A1, A2):
+def calculateSimilarityLoss(A1, A2):
 	#Apair = tf.stack([A1, A2])
 	#matchedClassPairVariance = tf.math.reduce_variance(Apair, axis=0)
-	#matchedClassPairVariance = tf.math.tf.math.reduce_std(Apair, axis=0)
-	#matchedClassPairSimilarity = 1.0/matchedClassPairVariance
-	matchedClassPairSimilarity = tf.math.abs(tf.math.subtract(A1, A2))	#CHECKTHIS
-	matchedClassPairSimilarity = tf.math.reduce_mean(matchedClassPairSimilarity)
-	print("matchedClassPairSimilarity = ", matchedClassPairSimilarity)
-	return matchedClassPairSimilarity
+	similarityLoss = ANNtf2_operations.calculateLossMeanSquaredError(A1, A2)
+	return similarityLoss
 	
-def calculateCovariance(A):
-	covariance = LIANNtf_algorithmLIANN_math.calculateCovarianceMean(A)
-	print("covariance = ", covariance)
-	return covariance
-	
-			
+def calculateCovarianceMatrix(A):
+	#covariance = LIANNtf_algorithmLIANN_math.calculateCovarianceMean(A)
+	A = A - tf.reduce_mean(A, axis=0)
+	batchSize = A.shape[0]
+	covarianceMatrix = (tf.matmul(tf.transpose(A), A)) / (batchSize - 1.0)
+	return covarianceMatrix
 
+def calculateCovarianceLoss(covarianceMatrix):
+	numberOfDimensions = covarianceMatrix.shape[0]	#A1.shape[1]
+	covarianceLoss = tf.reduce_sum(tf.pow(LIANNtf_algorithmLIANN_math.zeroOffDiagonalMatrixCells(covarianceMatrix), 2.0))/numberOfDimensions
+	return covarianceLoss
+		
