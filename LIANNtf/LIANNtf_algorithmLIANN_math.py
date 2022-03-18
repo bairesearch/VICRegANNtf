@@ -146,7 +146,7 @@ def calculateCovarianceMean(A):
 	covarianceMean = tf.math.reduce_mean(covarianceMatrix)
 	return covarianceMean
 
-def zeroOffDiagonalMatrixCells(covarianceMatrix):
+def zeroOnDiagonalMatrixCells(covarianceMatrix):
 	numberVariables = covarianceMatrix.shape[0]
 	diagonalMask = tf.eye(numberVariables)
 	diagonalMaskBool = tf.cast(diagonalMask, tf.bool)

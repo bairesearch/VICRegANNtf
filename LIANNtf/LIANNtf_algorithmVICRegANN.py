@@ -41,7 +41,7 @@ nuHyperparameter = 1.0 #covariance loss coefficient	#set to 1
 generateDeepNetwork = True
 
 generateNetworkStatic = False
-generateLargeNetwork = False
+generateLargeNetwork = True
 largeBatchSize = False
 
 #debug parameters;
@@ -319,6 +319,6 @@ def calculateCovarianceMatrix(A):
 
 def calculateCovarianceLoss(covarianceMatrix):
 	numberOfDimensions = covarianceMatrix.shape[0]	#A1.shape[1]
-	covarianceLoss = tf.reduce_sum(tf.pow(LIANNtf_algorithmLIANN_math.zeroOffDiagonalMatrixCells(covarianceMatrix), 2.0))/numberOfDimensions
+	covarianceLoss = tf.reduce_sum(tf.pow(LIANNtf_algorithmLIANN_math.zeroOnDiagonalMatrixCells(covarianceMatrix), 2.0))/numberOfDimensions
 	return covarianceLoss
 		

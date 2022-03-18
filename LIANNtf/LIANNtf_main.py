@@ -77,6 +77,7 @@ else:
 
 numberOfNetworks = 1
 trainMultipleNetworks = False
+equaliseNumberExamplesPerClass = False
 
 if(algorithm == "LIANN"):
 	dataset = "SmallDataset"
@@ -89,6 +90,7 @@ if(algorithm == "LIANN"):
 				trainMultipleNetworks = False
 elif(algorithm == "VICRegANN"):
 	dataset = "SmallDataset"
+	equaliseNumberExamplesPerClass = True	#required as numberExamplesPairsClassX = numberExamplesClassX^2
 	#trainMultipleNetworks not currently supported
 				
 								
@@ -386,7 +388,7 @@ def loadDataset(fileIndex):
 	elif(dataset == "POStagSentence"):
 		numberOfFeaturesPerWord, paddingTagIndex, datasetNumFeatures, datasetNumClasses, datasetNumExamples, train_xTemp, train_yTemp, test_xTemp, test_yTemp = ANNtf2_loadDataset.loadDatasetType3(datasetType3FileNameX, generatePOSunambiguousInput, onlyAddPOSunambiguousInputToTrain, useSmallSentenceLengths)
 	elif(dataset == "SmallDataset"):
-		datasetNumFeatures, datasetNumClasses, datasetNumExamples, train_xTemp, train_yTemp, test_xTemp, test_yTemp = ANNtf2_loadDataset.loadDatasetType2(datasetType2FileName, datasetClassColumnFirst)
+		datasetNumFeatures, datasetNumClasses, datasetNumExamples, train_xTemp, train_yTemp, test_xTemp, test_yTemp = ANNtf2_loadDataset.loadDatasetType2(datasetType2FileName, datasetClassColumnFirst, equaliseNumberExamplesPerClass)
 		numberOfFeaturesPerWord = None
 		paddingTagIndex = None
 	elif(dataset == "wikiXmlDataset"):
@@ -524,6 +526,8 @@ def train(trainMultipleNetworks=False, trainMultipleFiles=False, greedy=False):
 					(batchX, batchY) = trainDataListIterators[trainDataIndex].get_next()	#next(trainDataListIterators[trainDataIndex])
 					batchYactual = batchY
 					
+					#print("batchY = ", batchY)
+
 					for networkIndex in range(1, maxNetwork+1):
 						display = False
 						#if(l == maxLayer):	#only print accuracy after training final layer

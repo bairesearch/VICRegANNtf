@@ -139,6 +139,8 @@ from numpy import genfromtxt
 import ANNtf2_globalDefs
 #from nltk import tokenize	#required for ANNtf2_loadDataset loadDatasetType4 only
 import re
+import ANNtf2_operations
+
 
 datasetFolderRelative = "datasets"
 
@@ -368,17 +370,30 @@ def loadDatasetType1(datasetFileNameX, datasetFileNameY):
 	paddingTagIndexNA = paddingTagIndex
 	return numberOfFeaturesPerWord, paddingTagIndexNA, datasetNumFeatures, datasetNumClasses, datasetNumExamples, train_x, train_y, test_x, test_y
 
-	
-def loadDatasetType2(datasetFileName, classColumnFirst=True):
+
+def loadDatasetType2(datasetFileName, classColumnFirst=True, equaliseNumberExamplesPerClass=False):
 
 	numeriseClassColumn = True
 	
 	#dataRaw = loadtxtBasic(datasetFileName, delimiter=',')
 	dataRaw = loadtxt(datasetFileName, delimiter=',', classColumnFirst=classColumnFirst, numeriseClassColumn=numeriseClassColumn)
 	
+	#equaliseNumberExamplesPerClass
+	if(equaliseNumberExamplesPerClass):
+		xRaw = dataRaw[:,1:]
+		yRaw = dataRaw[:,0]
+		xRawEqualised, yRawEqualised = equaliseClassExamples(xRaw, yRaw)
+		yRawEqualised = np.expand_dims(yRawEqualised, axis=1)
+		#print("xRawEqualised.dtype = ", xRawEqualised.dtype)
+		#print("yRawEqualised.dtype = ", yRawEqualised.dtype)
+		#print("xRawEqualised.shape = ", xRawEqualised.shape)
+		#print("yRawEqualised.shape = ", yRawEqualised.shape)
+		dataRaw = np.concatenate((yRawEqualised, xRawEqualised), axis=1)
+				
 	datasetNumExamples = dataRaw.shape[0]
 	#print (dataRaw)
 	#print ("datasetNumExamples: " + str(datasetNumExamples))
+	
 	#randomise data
 	dataRawRandomised = dataRaw
 	np.random.shuffle(dataRawRandomised)
@@ -796,4 +811,42 @@ def loadDatasetType4(datasetFileNameX, AEANNsequentialInputTypesMaxLength, useSm
 	return articles
 
 
+def equaliseClassExamples(xRaw, yRaw):
 
+	numberOfClasses = int(np.amax(yRaw))
+	#print("numberOfClasses = ", numberOfClasses)
+
+	veryLargeInt = 9999999
+	classIndexCountMin = 0	
+	classIndexCountMinValue = veryLargeInt
+	for classIndex in range(1, numberOfClasses+1):
+		classIndexCount = np.count_nonzero(yRaw == classIndex)
+		#print("classIndexCount = ", classIndexCount)
+		if(classIndexCount < classIndexCountMinValue):
+			classIndexCountMin = classIndex
+			classIndexCountMinValue = classIndexCount
+	#print("classIndexCountMin = ", classIndexCountMin)
+	#print("classIndexCountMinValue = ", classIndexCountMinValue)
+	
+	xRawClassFilteredList = []
+	yRawClassFilteredList = []
+	
+	for classIndex in range(1, numberOfClasses+1):
+		xRawClassFiltered, yRawClassFiltered = ANNtf2_operations.filterNParraysByClassTarget(xRaw, yRaw, classTargetFilterIndex=classIndex)
+		xRawClassFiltered = xRawClassFiltered[0:classIndexCountMinValue] 
+		yRawClassFiltered = yRawClassFiltered[0:classIndexCountMinValue]
+		xRawClassFilteredList.append(xRawClassFiltered)
+		yRawClassFilteredList.append(yRawClassFiltered)
+		#print("xRawClassFiltered.shape = ", xRawClassFiltered.shape)
+		#print("yRawClassFiltered.shape = ", yRawClassFiltered.shape)
+
+	#collapse 2d list into 1d list
+	xRawClassFilteredList = [j for sub in xRawClassFilteredList for j in sub]
+	yRawClassFilteredList = [j for sub in yRawClassFilteredList for j in sub]		
+	xRawEqualised = np.array(xRawClassFilteredList)
+	yRawEqualised = np.array(yRawClassFilteredList)
+
+	#print("xRawEqualised = ", xRawEqualised)
+	#print("yRawEqualised = ", yRawEqualised)
+	
+	return xRawEqualised, yRawEqualised
