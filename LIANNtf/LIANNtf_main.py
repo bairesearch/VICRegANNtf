@@ -172,10 +172,9 @@ def trainBatch(e, batchIndex, batchX, batchY, datasetNumClasses, numberOfLayers,
 		executeFinalLayerHebbianLearning = False
 		if(LIANNtf_algorithm.learningAlgorithmFinalLayerBackpropHebbian):
 			executeFinalLayerHebbianLearning = True
-			if(LIANNtf_algorithm.supportDimensionalityReduction):
-				if(LIANNtf_algorithm.supportDimensionalityReductionFirstPhaseOnly):
-					if(e < LIANNtf_algorithm.supportDimensionalityReductionFirstPhaseOnlyNumEpochs):
-						executeFinalLayerHebbianLearning = False
+			if(LIANNtf_algorithm.supportDimensionalityReductionFirstPhaseOnly):
+				if(e < LIANNtf_algorithm.supportDimensionalityReductionFirstPhaseOnlyNumEpochs):
+					executeFinalLayerHebbianLearning = False
 
 		#print("trainMultipleFiles error: does not support greedy training for LUANN")
 		if(executeFinalLayerHebbianLearning):
@@ -437,7 +436,7 @@ def trainMinimal():
 		trainDataListIterators = []
 		for trainData in trainDataList:
 			trainDataListIterators.append(iter(trainData))
-		testBatchX, testBatchY = generateTFbatch(test_x, test_y, batchSize)
+		testBatchX, testBatchY = ANNtf2_operations.generateTFbatch(test_x, test_y, batchSize)
 
 		for batchIndex in range(int(trainingSteps)):
 			(batchX, batchY) = trainDataListIterators[trainDataIndex].get_next()	#next(trainDataListIterators[trainDataIndex])
