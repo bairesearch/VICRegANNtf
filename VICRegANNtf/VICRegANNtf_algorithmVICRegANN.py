@@ -1,19 +1,19 @@
-"""LIANNtf_algorithmVICRegANN.py
+"""VICRegANNtf_algorithmVICRegANN.py
 
 # Author:
-Richard Bruce Baxter - Copyright (c) 2020-2022 Baxter AI (baxterai.com)
+Richard Bruce Baxter - Copyright (c) 2022-2023 Baxter AI (baxterai.com)
 
 # License:
 MIT License
 
 # Installation:
-see LIANNtf_main.py
+see VICRegANNtf_main.py
 
 # Usage:
-see LIANNtf_main.py
+see VICRegANNtf_main.py
 
 # Description:
-LIANNtf algorithm VICRegANN - define Variance-Invariance-Covariance Regularization artificial neural network - supervised greedy learning implementation (force neural independence)
+VICRegANNtf algorithm VICRegANN - define Variance-Invariance-Covariance Regularization artificial neural network - supervised greedy learning implementation (force neural independence)
 
 Emulates unsupervised singular value decomposition (SVD/factor analysis) learning for all hidden layers
 
@@ -24,7 +24,6 @@ import numpy as np
 from ANNtf2_operations import *	#generateParameterNameSeq, generateParameterName, defineNetworkParameters
 import ANNtf2_operations
 import ANNtf2_globalDefs
-import LIANNtf_algorithmLIANN_math
 import copy
 
 #learningAlgorithmVICRegSupervisedGreedy = True
@@ -311,7 +310,7 @@ def calculateSimilarityLoss(A1, A2):
 	return similarityLoss
 	
 def calculateCovarianceMatrix(A):
-	#covariance = LIANNtf_algorithmLIANN_math.calculateCovarianceMean(A)
+	#covariance = calculateCovarianceMean(A)
 	A = A - tf.reduce_mean(A, axis=0)
 	batchSize = A.shape[0]
 	covarianceMatrix = (tf.matmul(tf.transpose(A), A)) / (batchSize - 1.0)
@@ -319,6 +318,14 @@ def calculateCovarianceMatrix(A):
 
 def calculateCovarianceLoss(covarianceMatrix):
 	numberOfDimensions = covarianceMatrix.shape[0]	#A1.shape[1]
-	covarianceLoss = tf.reduce_sum(tf.pow(LIANNtf_algorithmLIANN_math.zeroOnDiagonalMatrixCells(covarianceMatrix), 2.0))/numberOfDimensions
+	covarianceLoss = tf.reduce_sum(tf.pow(zeroOnDiagonalMatrixCells(covarianceMatrix), 2.0))/numberOfDimensions
 	return covarianceLoss
-		
+
+def zeroOnDiagonalMatrixCells(covarianceMatrix):
+	numberVariables = covarianceMatrix.shape[0]
+	diagonalMask = tf.eye(numberVariables)
+	diagonalMaskBool = tf.cast(diagonalMask, tf.bool)
+	diagonalMaskBool = tf.logical_not(diagonalMaskBool)
+	diagonalMask = tf.cast(diagonalMaskBool, tf.float32)
+	covarianceMatrix = tf.multiply(covarianceMatrix, diagonalMask)
+	return covarianceMatrix		
