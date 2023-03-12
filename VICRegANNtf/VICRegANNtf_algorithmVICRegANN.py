@@ -23,7 +23,7 @@ import tensorflow as tf
 import numpy as np
 from ANNtf2_operations import *	#generateParameterNameSeq, generateParameterName, defineNetworkParameters
 import ANNtf2_operations
-import ANNtf2_globalDefs
+from ANNtf2_globalDefs import *
 import copy
 
 #learningAlgorithmVICRegSupervisedGreedy = True
@@ -43,11 +43,18 @@ generateNetworkStatic = False
 generateLargeNetwork = True
 largeBatchSize = False
 
+
 #debug parameters;
 debugFastTrain = False
 debugSmallBatchSize = False	#small batch size for debugging matrix output
 generateVeryLargeNetwork = False
 
+debugDataNormalisation = False
+debugParameterInitialisation = False
+debugVICRegLoss = False
+if(debugDataNormalisation or debugParameterInitialisation or debugVICRegLoss):
+	debugSmallBatchSize = True
+	
 #network/activation parameters;
 #forward excitatory connections;
 W = {}
@@ -55,7 +62,8 @@ B = {}
 
 learningRate = 0.0	#defined by defineTrainingParametersVICRegANN
 
-
+normaliseFirstLayer = False	#datasetNormaliseStdAvg (~-1.0 to ~1.0), else datasetNormaliseMinMax (0.0 to 1.0)
+equaliseNumberExamplesPerClass = False
 
 if(generateVeryLargeNetwork):
 	generateLargeNetworkRatio = 100	#100	#default: 10
@@ -65,8 +73,10 @@ else:
 	else:
 		generateLargeNetworkRatio = 1
 
-Wmean = 0.0
-WstdDev = 0.05	#stddev of weight initialisations
+useCustomWeightInitialisation = True
+if(useCustomWeightInitialisation):
+	Wmean = 0.0
+	WstdDev = 0.05	#stddev of weight initialisations
 	
 	
 #Network parameters
@@ -97,7 +107,7 @@ def defineTrainingParameters(dataset):
 	if(debugFastTrain):
 		trainingSteps = batchSize
 	else:
-		trainingSteps = 10000	#1000
+		trainingSteps = 1000	#10000	#1000
 		
 	displayStep = 100
 			
@@ -126,8 +136,10 @@ def defineNeuralNetworkParameters():
 	print("numberOfNetworks", numberOfNetworks)
 	
 	global randomNormal
-	randomNormal = tf.initializers.RandomNormal(mean=Wmean, stddev=WstdDev)
-	#randomNormal = tf.initializers.RandomNormal()
+	if(useCustomWeightInitialisation):
+		randomNormal = tf.initializers.RandomNormal(mean=Wmean, stddev=WstdDev)
+	else:
+		randomNormal = tf.initializers.RandomNormal()
 	randomNormalFinalLayer = tf.initializers.RandomNormal()
 	
 	for networkIndex in range(1, numberOfNetworks+1):
@@ -192,14 +204,20 @@ def neuralNetworkPropagationVICRegANNtrain(x, layerToTrain, networkIndex=1):
 	AprevLayer2 = x2
 	ZprevLayer2 = x2
 	for l in range(1, maxLayer+1):
-					
+		#print("l = ", l)			
 		trainLayer = False
 		if(l == layerToTrain):
 			trainLayer = True
 	
 		A1, Z1 = forwardIteration(networkIndex, AprevLayer1, ZprevLayer1, l)
 		A2, Z2 = forwardIteration(networkIndex, AprevLayer2, ZprevLayer2, l)
-		
+
+		if(debugParameterInitialisation):
+			printt("Z1 = ", Z1)
+			printt("Z2 = ", Z2)
+			EW = W[generateParameterNameNetwork(networkIndex, l, "W")]
+			printt("EW = ", EW)
+								
 		if(trainLayer):
 			#CHECKTHIS: verify learning algorithm (how to modify weights to maximise independence between neurons on each layer)
 			#add tech notes here from do list log
@@ -278,7 +296,6 @@ def generateTFtrainDataFromNParraysVICRegANN(train_x, train_y, shuffleSize, batc
 
 
 def calculatePropagationLossVICRegANN(A1, A2):
-
 	#variance loss
 	batchVariance1 = calculateVarianceBatch(A1)
 	batchVariance2 = calculateVarianceBatch(A2)
@@ -291,10 +308,20 @@ def calculatePropagationLossVICRegANN(A1, A2):
 	covariance1matrix = calculateCovarianceMatrix(A1)
 	covariance2matrix = calculateCovarianceMatrix(A2)
 	covarianceLoss = calculateCovarianceLoss(covariance1matrix) + calculateCovarianceLoss(covariance2matrix)
-	
+
 	#loss
 	loss = lambdaHyperparameter*matchedClassPairSimilarityLoss + muHyperparameter*varianceLoss + nuHyperparameter*covarianceLoss
-	#print("loss = ", loss)
+
+	if(debugVICRegLoss):
+		printt("A1 = ", A1)
+		printt("A2 = ", A2)	
+		printt("batchVariance1 = ", batchVariance1)
+		printt("varianceLoss = ", varianceLoss)	
+		printt("matchedClassPairSimilarityLoss = ", matchedClassPairSimilarityLoss)
+		printt("covariance1matrix = ", covariance1matrix)
+		printt("covarianceLoss = ", covarianceLoss)
+		printt("loss = ", loss)
+		ex
 	
 	return loss
 	

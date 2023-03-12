@@ -34,7 +34,7 @@ np.set_printoptions(threshold=sys.maxsize)
 
 #from ANNtf2_operations import *
 import ANNtf2_operations
-import ANNtf2_globalDefs
+from ANNtf2_globalDefs import *
 from numpy import random
 import ANNtf2_loadDataset
 
@@ -205,6 +205,7 @@ def executeOptimisation(x, y, datasetNumClasses, numberOfLayers, optimizer, netw
 		
 
 def calculatePropagationLoss(x, y, datasetNumClasses, numberOfLayers, costCrossEntropyWithLogits, networkIndex=1, l=None):
+	#print("calculatePropagationLoss; l = ", l)
 	if(l==numberOfLayers):
 		pred = VICRegANNtf_algorithm.neuralNetworkPropagationVICRegANNtrainFinalLayer(x, l, networkIndex)
 		target = y[:, 0]	#only optimise final layer weights for first experience in matched class pair
@@ -283,7 +284,7 @@ def calculatePropagationLossAllNetworksFinalLayer(x, y, datasetNumClasses, costC
 	
 	
 		
-def loadDataset(fileIndex):
+def loadDataset(fileIndex, equaliseNumberExamplesPerClass=False, normalise=False):
 
 	global numberOfFeaturesPerWord
 	global paddingTagIndex
@@ -307,20 +308,20 @@ def loadDataset(fileIndex):
 			
 	numberOfLayers = 0
 	if(dataset == "POStagSequence"):
-		numberOfFeaturesPerWord, paddingTagIndex, datasetNumFeatures, datasetNumClasses, datasetNumExamples, train_xTemp, train_yTemp, test_xTemp, test_yTemp = ANNtf2_loadDataset.loadDatasetType1(datasetType1FileNameX, datasetType1FileNameY)
+		numberOfFeaturesPerWord, paddingTagIndex, datasetNumFeatures, datasetNumClasses, datasetNumExamples, train_x, train_y, test_x, test_y = ANNtf2_loadDataset.loadDatasetType1(datasetType1FileNameX, datasetType1FileNameY, normalise=normalise)
 	elif(dataset == "POStagSentence"):
-		numberOfFeaturesPerWord, paddingTagIndex, datasetNumFeatures, datasetNumClasses, datasetNumExamples, train_xTemp, train_yTemp, test_xTemp, test_yTemp = ANNtf2_loadDataset.loadDatasetType3(datasetType3FileNameX, generatePOSunambiguousInput, onlyAddPOSunambiguousInputToTrain, useSmallSentenceLengths)
+		numberOfFeaturesPerWord, paddingTagIndex, datasetNumFeatures, datasetNumClasses, datasetNumExamples, train_x, train_y, test_x, test_y = ANNtf2_loadDataset.loadDatasetType3(datasetType3FileNameX, generatePOSunambiguousInput, onlyAddPOSunambiguousInputToTrain, useSmallSentenceLengths, normalise=normalise)
 	elif(dataset == "SmallDataset"):
-		datasetNumFeatures, datasetNumClasses, datasetNumExamples, train_xTemp, train_yTemp, test_xTemp, test_yTemp = ANNtf2_loadDataset.loadDatasetType2(datasetType2FileName, datasetClassColumnFirst, equaliseNumberExamplesPerClass)
+		datasetNumFeatures, datasetNumClasses, datasetNumExamples, train_x, train_y, test_x, test_y = ANNtf2_loadDataset.loadDatasetType2(datasetType2FileName, datasetClassColumnFirst, equaliseNumberExamplesPerClass=equaliseNumberExamplesPerClass, normalise=normalise)
 		numberOfFeaturesPerWord = None
 		paddingTagIndex = None
 	elif(dataset == "wikiXmlDataset"):
-		articles = ANNtf2_loadDataset.loadDatasetType4(datasetType4FileName, AEANNsequentialInputTypesMaxLength, useSmallSentenceLengths, AEANNsequentialInputTypeMinWordVectors)
-
+		articles = ANNtf2_loadDataset.loadDatasetType4(datasetType4FileName, LUANNsequentialInputTypesMaxLength, useSmallSentenceLengths, LUANNsequentialInputTypeTrainWordVectors)
+	
 	if(dataset == "wikiXmlDataset"):
 		return articles
 	else:
-		return numberOfFeaturesPerWord, paddingTagIndex, datasetNumFeatures, datasetNumClasses, datasetNumExamples, train_xTemp, train_yTemp, test_xTemp, test_yTemp
+		return numberOfFeaturesPerWord, paddingTagIndex, datasetNumFeatures, datasetNumClasses, datasetNumExamples, train_x, train_y, test_x, test_y
 		
 
 
@@ -331,7 +332,7 @@ def trainMinimal():
 	fileIndexTemp = 0	#assert trainMultipleFiles = False
 	
 	#generate network parameters based on dataset properties:
-	numberOfFeaturesPerWord, paddingTagIndex, datasetNumFeatures, datasetNumClasses, datasetNumExamplesTemp, train_xTemp, train_yTemp, test_xTemp, test_yTemp = loadDataset(fileIndexTemp)
+	numberOfFeaturesPerWord, paddingTagIndex, datasetNumFeatures, datasetNumClasses, datasetNumExamplesTemp, train_xTemp, train_yTemp, test_xTemp, test_yTemp = loadDataset(fileIndexTemp, equaliseNumberExamplesPerClass=VICRegANNtf_algorithm.equaliseNumberExamplesPerClass, normalise=VICRegANNtf_algorithm.normaliseFirstLayer)
 
 	#Model constants
 	num_input_neurons = datasetNumFeatures  #train_x.shape[1]
@@ -349,7 +350,7 @@ def trainMinimal():
 		print("epoch e = ", e)
 	
 		fileIndex = 0
-		numberOfFeaturesPerWord, paddingTagIndex, datasetNumFeatures, datasetNumClasses, datasetNumExamples, train_x, train_y, test_x, test_y = loadDataset(fileIndex)
+		numberOfFeaturesPerWord, paddingTagIndex, datasetNumFeatures, datasetNumClasses, datasetNumExamples, train_x, train_y, test_x, test_y = loadDataset(fileIndex, equaliseNumberExamplesPerClass=VICRegANNtf_algorithm.equaliseNumberExamplesPerClass, normalise=VICRegANNtf_algorithm.normaliseFirstLayer)
 
 		shuffleSize = datasetNumExamples
 		trainDataIndex = 0
@@ -382,7 +383,7 @@ def train(trainMultipleNetworks=False, trainMultipleFiles=False, greedy=False):
 	fileIndexTemp = 0	#assert trainMultipleFiles = False
 	
 	#generate network parameters based on dataset properties:
-	numberOfFeaturesPerWord, paddingTagIndex, datasetNumFeatures, datasetNumClasses, datasetNumExamplesTemp, train_xTemp, train_yTemp, test_xTemp, test_yTemp = loadDataset(fileIndexTemp)
+	numberOfFeaturesPerWord, paddingTagIndex, datasetNumFeatures, datasetNumClasses, datasetNumExamplesTemp, train_xTemp, train_yTemp, test_xTemp, test_yTemp = loadDataset(fileIndexTemp, equaliseNumberExamplesPerClass=VICRegANNtf_algorithm.equaliseNumberExamplesPerClass, normalise=VICRegANNtf_algorithm.normaliseFirstLayer)
 
 	#Model constants
 	num_input_neurons = datasetNumFeatures  #train_x.shape[1]
@@ -425,14 +426,14 @@ def train(trainMultipleNetworks=False, trainMultipleFiles=False, greedy=False):
 			else:
 				fileIndex = f
 				
-			numberOfFeaturesPerWord, paddingTagIndex, datasetNumFeatures, datasetNumClasses, datasetNumExamples, train_x, train_y, test_x, test_y = loadDataset(fileIndex)
+			numberOfFeaturesPerWord, paddingTagIndex, datasetNumFeatures, datasetNumClasses, datasetNumExamples, train_x, train_y, test_x, test_y = loadDataset(fileIndex, equaliseNumberExamplesPerClass=VICRegANNtf_algorithm.equaliseNumberExamplesPerClass, normalise=VICRegANNtf_algorithm.normaliseFirstLayer)
 
 			shuffleSize = datasetNumExamples
 			trainDataIndex = 0
 
 			#greedy code
 			for l in range(1, maxLayer+1):
-				print("l = ", l)
+				#print("l = ", l)
 				trainData = generateTFtrainDataFromNParrays(train_x, train_y, shuffleSize, batchSize, datasetNumClasses)
 				trainDataList = []
 				trainDataList.append(trainData)
@@ -449,7 +450,9 @@ def train(trainMultipleNetworks=False, trainMultipleFiles=False, greedy=False):
 					(batchX, batchY) = trainDataListIterators[trainDataIndex].get_next()	#next(trainDataListIterators[trainDataIndex])
 					batchYactual = batchY
 					
-					#print("batchY = ", batchY)
+					if(VICRegANNtf_algorithm.debugDataNormalisation):
+						printt("batchX = ", batchX)
+						#print("batchY = ", batchY)
 
 					for networkIndex in range(1, maxNetwork+1):
 						display = False
